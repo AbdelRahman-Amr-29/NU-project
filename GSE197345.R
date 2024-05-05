@@ -31,6 +31,23 @@ rownames(raw_counts) <- raw_counts$gene
 
 # remove the gene column
 raw_counts <- raw_counts[, -1]
+#####################################################
+# Remove rows containing zeros
+raw_counts <- raw_counts[apply(raw_counts, 1, function(row) !any(row == 0)), ]
+
+# Check if rows containing zeros are removed
+zeros_removed <- any(apply(raw_counts, 1, function(row) any(row == 0)))
+
+# Print the result
+if (!zeros_removed) {
+  print("Rows containing zeros have been removed.")
+} else {
+  print("Rows containing zeros could not be removed completely.")
+}
+
+#####################################################
+# Remove rows with NA values
+raw_counts <- na.omit(raw_counts)
 
 #####################################################
 # get metadata
@@ -139,3 +156,6 @@ res
 
 # Explore results
 summary(res)
+
+res0.05 <- results(dds, alpha = 0.05)
+summary(res0.05)
