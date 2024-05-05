@@ -123,35 +123,36 @@ meta_5_data <- metadata_modified %>%
   filter(sample_condition == 0 | sample_condition == 5)
 
 # change the 0 to control and 5 to PD stage 5 in the column
-colData <- meta_5_data %>% 
+colData_5 <- meta_5_data %>% 
   dplyr::mutate(sample_condition = gsub(0, "control", sample_condition)) %>% 
   dplyr::mutate(sample_condition = gsub(5, "PD", sample_condition))
 
 # download the modified metadata to use it in the analysis
-write.csv(colData, "colData.csv", row.names = TRUE)
+write.csv(colData_5, "colData5.csv", row.names = TRUE)
 
 #extract only columns matching with metadata in the same order as row names of meta data 
 data_5_ordered <- data_ordered %>% 
   dplyr::select(1, 2, 3, 4, 5, 6, 9, 10, 13, 14,
                 17, 18, 19, 22, 23, 26, 27, 29,
-                33, 34, 37, 38, 43, 44, 46, 54, 55,
-                60, 65, 66, 67, 68, 71, 73, 74, 75, 76, 77, 80, 81, 82, 83) 
+                33, 34, 37, 38, 43, 44, 46, 54, 
+                55,60, 65, 66, 67, 68, 71, 73, 
+                74, 75, 76, 77, 80, 81, 82, 83) 
 
-########## preparing for the DESeq2 analysis
+########## preparing for the DESeq2 analysis for stage 5
 # read in the metadata we have adjusted lately
-colData <- read.csv("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE216281/colData.csv")
+colData_5 <- read.csv("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE216281/colData5.csv")
 
 # Set the row names of the dataframe to the values in the sample_name column
-rownames(colData) <- colData$X
+rownames(colData_5) <- colData_5$X
 
 # remove the first column from the meatadata_modified
-colData <- colData[, -1]
+colData_5 <- colData_5[, -1]
 
 #check the row names in colData match with column names with data_5_ordered
-all(colnames(data_5_ordered) %in% rownames(colData))
+all(colnames(data_5_ordered) %in% rownames(colData_5))
 
 #check the order
-all(colnames(data_5_ordered) == rownames(colData))
+all(colnames(data_5_ordered) == rownames(colData_5))
 
 # Convert numeric columns to integer
 numeric_columns <- sapply(data_5_ordered, is.numeric)
@@ -160,7 +161,7 @@ numeric_columns <- sapply(data_5_ordered, is.numeric)
 data_5_ordered[, numeric_columns] <- lapply(data_5_ordered[, numeric_columns], as.integer)
 
 # Convert 'braak_lewy_body_stage' column to factor
-colData$sample_condition <- factor(colData$sample_condition)
+colData_5$sample_condition <- factor(colData_5$sample_condition)
 
 ######### Check the distribution of RNA-seq counts 
 #let’s plot a histogram of the counts for a single sample, ‘sample_R1’:
@@ -183,28 +184,121 @@ ggplot(df) +
 
 ########### Begin with the DESeq2 analysis 
 # Construct a DESeqDataSet object 
-dds <- DESeqDataSetFromMatrix(countData = data_5_ordered,
-                              colData = colData,
+dds5 <- DESeqDataSetFromMatrix(countData = data_5_ordered,
+                              colData = colData_5,
                               design = ~ sample_condition)
 
-view(counts(dds))
+view(counts(dds5))
 
 
 # remove rows that have value less than 10 
-keep <- rowSums(counts(dds)) >= 10
-dds <- dds[keep, ]
+keep <- rowSums(counts(dds5)) >= 10
+dds5 <- dds5[keep, ]
 
 # set the factor level
-dds$sample_condition <-  relevel(dds$sample_condition, ref = 'control')
+dds5$sample_condition <-  relevel(dds5$sample_condition, ref = 'control')
 
 # Run DESeq
-dds <- DESeq(dds)
-res <- results(dds)
+dds5 <- DESeq(dds5)
+res5 <- results(dds5)
 
-res
+res5
 
 #check results
-summary(res)
+summary(res5)
 
-res0.05 <- results(dds, alpha = 0.05)
-summary(res0.05)
+res5_0.05 <- results(dds5, alpha = 0.05)
+summary(res5_0.05)
+
+#####################################################
+### we have many conditions so we will begin with sample condition 6 comparing with control 0
+meta_6_data <- metadata_modified %>%
+  filter(sample_condition == 0 | sample_condition == 6)
+
+# change the 0 to control and 5 to PD stage 5 in the column
+colData_6 <- meta_6_data %>% 
+  dplyr::mutate(sample_condition = gsub(0, "control", sample_condition)) %>% 
+  dplyr::mutate(sample_condition = gsub(6, "PD", sample_condition))
+
+# download the modified metadata to use it in the analysis
+write.csv(colData_6, "colData6.csv", row.names = TRUE)
+
+#extract only columns matching with metadata in the same order as row names of meta data 
+data_6_ordered <- data_ordered %>% 
+  dplyr::select(5, 6, 7, 11, 16, 21, 22, 31, 34, 35,
+                37, 38, 39, 40, 42, 43, 45, 46, 47, 48,
+                49, 50, 52, 53, 54, 57, 58, 59, 60, 62,
+                63, 65, 66, 67, 70, 71, 72, 73, 74, 75, 
+                76, 77, 80, 81, 82, 83)
+
+########## preparing for the DESeq2 analysis for stage 6 data
+# read in the metadata we have adjusted lately
+colData_6 <- read.csv("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE216281/colData6.csv")
+
+# Set the row names of the dataframe to the values in the sample_name column
+rownames(colData_6) <- colData_6$X
+
+# remove the first column from the meatadata_modified
+colData_6 <- colData_6[, -1]
+
+#check the row names in colData match with column names with data_5_ordered
+all(colnames(data_6_ordered) %in% rownames(colData_6))
+
+#check the order
+all(colnames(data_6_ordered) == rownames(colData_6))
+
+# Convert numeric columns to integer
+numeric_columns <- sapply(data_6_ordered, is.numeric)
+
+# Convert numeric columns to integer format
+data_6_ordered[, numeric_columns] <- lapply(data_6_ordered[, numeric_columns], as.integer)
+
+# Convert 'braak_lewy_body_stage' column to factor
+colData_6$sample_condition <- factor(colData_6$sample_condition)
+
+######### Check the distribution of RNA-seq counts 
+#let’s plot a histogram of the counts for a single sample, ‘sample_R6’:
+ggplot(data_6_ordered) +
+  geom_histogram(aes(x = sample_R6), stat = "bin", bins = 200) +
+  xlab("Raw expression counts") +
+  ylab("Number of genes")
+
+# Mean vs Variance
+mean_counts <- apply(data_6_ordered[,6:8], 1, mean)        #The second argument '1' of 'apply' function indicates the function being applied to rows. Use '2' if applied to columns 
+variance_counts <- apply(data_6_ordered[,6:8], 1, var)
+df <- data.frame(mean_counts, variance_counts)
+
+# plot the mean and variance values against each others
+ggplot(df) +
+  geom_point(aes(x=mean_counts, y=variance_counts)) + 
+  scale_y_log10(limits = c(1,1e9)) +
+  scale_x_log10(limits = c(1,1e9)) +
+  geom_abline(intercept = 0, slope = 1, color="red")
+
+########### Begin with the DESeq2 analysis 
+# Construct a DESeqDataSet object 
+dds6 <- DESeqDataSetFromMatrix(countData = data_6_ordered,
+                               colData = colData_6,
+                               design = ~ sample_condition)
+
+view(counts(dds6))
+
+
+# remove rows that have value less than 10 
+keep <- rowSums(counts(dds6)) >= 10
+dds6 <- dds6[keep, ]
+
+# set the factor level
+dds6$sample_condition <-  relevel(dds6$sample_condition, ref = 'control')
+
+# Run DESeq
+dds6 <- DESeq(dds6)
+res6 <- results(dds6)
+
+res6
+
+#check results
+summary(res6)
+
+res6_0.05 <- results(dds6, alpha = 0.05)
+summary(res6_0.05)
