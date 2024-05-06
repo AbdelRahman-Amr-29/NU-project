@@ -191,3 +191,6 @@ summary(res)
 
 res0.05 <- results(dds, alpha = 0.05)
 summary(res0.05)
+
+res0.25 <- results(dds, alpha = 0.25)
+summary(res0.25)
