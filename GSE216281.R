@@ -1,3 +1,13 @@
+############### Information about the data
+## Summary:	To investigate transcriptomic changes associated with Parkinson's disease development 
+#we compared frontal cortex gene expression across four Braak Lewy body stage groups.
+#Additionally we investigated sex-specific gene expression differences in neuropathologically
+#healthy donors and Parkinson's disease patients at Braak Lewy body stage 5.
+#We investigated sex-specific gene expression differences in neuropathologically
+#healthy donors and Parkinson's disease patients at Braak Lewy body stage 5.
+##DOI: https://doi.org/10.1007/s00401-023-02597-7
+
+###################################################################
 # Setting working directory
 setwd("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE216281")
 
