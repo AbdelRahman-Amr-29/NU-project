@@ -1,3 +1,12 @@
+################################ information about the data
+## GSE197345
+## Summary:	RNA-seq evaluation of enriched Purkinje cells from the post-mortem human cerebellum.
+# Purkinje cells were removed via laser capture microdissection and pooled for 
+# RNA-extraction and sequencing. 24 ET patients and 16 controls healthy age matched were compared.
+##DOI: 10.1007/s12311-022-01483-4
+
+########################################
+
 ## setting the working directory
 setwd("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE197345")
 
@@ -31,6 +40,7 @@ rownames(raw_counts) <- raw_counts$gene
 
 # remove the gene column
 raw_counts <- raw_counts[, -1]
+
 #####################################################
 # Remove rows containing zeros
 raw_counts <- raw_counts[apply(raw_counts, 1, function(row) !any(row == 0)), ]
@@ -85,7 +95,7 @@ all(rownames(metadata_modified) %in% colnames(raw_counts))
 all(rownames(metadata_modified) == colnames(raw_counts))
 
 # download the modified metadata to use it in the analysis
-write.csv(metadata_modified, "colData.csv", row.names = TRUE)
+#write.csv(metadata_modified, "colData.csv", row.names = TRUE)
 
 ########## preparing for the DESeq2 analysis
 # read in the metadata we have adjusted lately
