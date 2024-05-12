@@ -26,7 +26,7 @@ library(airway)
 library(pheatmap)
 
 # Read txt file & convert it to table
-raw_data <- read.table("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE205450/counts.table.txt", header = TRUE, sep = "\t")
+raw_data <- read.table("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE205450/GSE205450_counts.table.txt", header = TRUE, sep = "\t")
 
 # check the duplicates of symbols column
 x <- duplicated(raw_data$Gene_symbol)
@@ -123,7 +123,7 @@ all(colnames(raw_CAU_data) %in% rownames(colDataCAU))
 all(colnames(raw_CAU_data) == rownames(colDataCAU))
 
 # Convert numeric columns to integer
-numeric_columns <- sapply(data_6_ordered, is.numeric)
+numeric_columns <- sapply(raw_CAU_data, is.numeric)
 
 # Convert 'sample_condition' column to factor
 colDataCAU$sample_condition <- factor(colDataCAU$sample_condition)
