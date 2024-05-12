@@ -46,7 +46,7 @@ ids <- raw_data[ , 1, drop = FALSE]
 head(ids)
 
 # download the first column from the data file contains ids
-write.csv(ids, "ensembl_gene_ids.csv", row.names = FALSE)
+#write.csv(ids, "ensembl_gene_ids.csv", row.names = FALSE)
 
 # read the ensembl_gene_ids file to use it in the next step
 ensembl_ids <- read.csv("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE216281/ensembl_gene_ids.csv", header = TRUE)
@@ -65,31 +65,39 @@ mapper <- mapIds(org.Hs.eg.db,
 mapper.df <- as.data.frame(mapper)
 mapper.df <- cbind(rownames(mapper.df), mapper.df)
 names(mapper.df) <- c("ensembl_gene_id","symbol")
-combined_data <- merge(mapper.df, raw_data, by = "ensembl_gene_id", all.x = TRUE)
-combined_data <- combined_data[, -1]
-combined_data <- combined_data[ ! is.na(combined_data$symbol),]
+raw_data <- merge(mapper.df, raw_data, by = "ensembl_gene_id", all.x = TRUE)
+raw_data <- raw_data[, -1]
+raw_data <- raw_data[ ! is.na(raw_data$symbol),]
 
 ########################################################
 # check the duplicates of symbols column
-x <- duplicated(combined_data$symbol)  
+x <- duplicated(raw_data$symbol)  
 sum(x)
 
-### yes .. why ? transcripts?  solutions : aggregation
-# do not run for now 
-# final_data <- combined_data[-dim(combined_data)[2]]
-#final_data=apply(final_data,2, as.numeric)
-
 ####remove  duplication by aggregation
-final_data.agg= aggregate(combined_data, list(combined_data$symbol),FUN=mean)
-final_data.agg <- final_data.agg[, -2]
-final_data_agg <- colnames(final_data.agg)[1] <- "symbol"
+raw_data.agg <- aggregate(raw_data, list(raw_data$symbol),FUN=mean)
+raw_data.agg <- raw_data.agg[, -2]
+colnames(raw_data.agg)[1] <- "symbol"
 
 # Set the 'symbol' column as row names
-row.names(final_data.agg) <- final_data.agg$symbol
+row.names(raw_data.agg) <- raw_data.agg$symbol
 
 # remove symbol column
-final_data.agg <- final_data.agg[ , -1]
+raw_data.agg <- raw_data.agg[ , -1]
 
+#####################################################
+# Remove rows containing zeros
+raw_data.agg <- raw_data.agg[apply(raw_data.agg, 1, function(row) !any(row == 0)), ]
+
+# Check if rows containing zeros are removed
+zeros_removed <- any(apply(raw_data.agg, 1, function(row) any(row == 0)))
+
+# Print the result
+if (!zeros_removed) {
+  print("Rows containing zeros have been removed.")
+} else {
+  print("Rows containing zeros could not be removed completely.")
+}
 ########################################################
 ### get metadata
 gse <- getGEO(GEO = "GSE216281", GSEMatrix = TRUE)
@@ -113,22 +121,121 @@ rownames(metadata_modified) <- metadata_modified$samples_name
 # remove the first column from the meatadata_modified
 metadata_modified <- metadata_modified[, -1]
 
-all(colnames(final_data.agg) %in% rownames(metadata_modified))
-all(rownames(metadata_modified) %in% colnames(final_data.agg))
+all(colnames(raw_data.agg) %in% rownames(metadata_modified))
+all(rownames(metadata_modified) %in% colnames(raw_data.agg))
+#######################################
+### sample condition 1-4 comparing with control 0
+meta_1_data <- metadata_modified %>%
+  filter(sample_condition == 0 | sample_condition == 1 | sample_condition == 2
+         | sample_condition == 3 | sample_condition == 4)
+
+# change the 0 to control and 1,2,3 and 4 to PD
+colData_1 <- meta_1_data %>% 
+  dplyr::mutate(sample_condition = gsub(0, "control", sample_condition)) %>% 
+  dplyr::mutate(sample_condition = gsub(1, "PD", sample_condition)) %>% 
+  dplyr::mutate(sample_condition = gsub(2, "PD", sample_condition)) %>% 
+  dplyr::mutate(sample_condition = gsub(3, "PD", sample_condition)) %>% 
+  dplyr::mutate(sample_condition = gsub(4, "PD", sample_condition))
+
+# download the modified metadata to use it in the analysis
+#write.csv(colData_1, "colData1.csv", row.names = TRUE)
+
+########## preparing for the DESeq2 analysis for stage 5
+# read in the metadata we have adjusted lately
+colData_1 <- read.csv("C:/Users/arahm/OneDrive/Desktop/NU-Project/GSE216281/colData1.csv")
+
+# Set the row names of the dataframe to the values in the sample_name column
+rownames(colData_1) <- colData_1$X
+
+# remove the first column from the meatadata_modified
+colData_1 <- colData_1[, -1]
+
+# keep only the columns that matches with the rows of modified metadata
+raw_data1 <- raw_data.agg[, names(raw_data.agg) %in% rownames(colData_1)]
+
+#check the row names in colData match with column names with raw_data1
+all(colnames(raw_data1) %in% rownames(colData_1))
 
 ########################################
 # know the right order indexing
-data_idx <- match(rownames(metadata_modified), colnames(final_data.agg))
+data_idx <- match(rownames(colData_1), colnames(raw_data1))
 data_idx
 
 # Reorder the counts data frame to have the sample names in the same order as the metadata data frame
-data_ordered  <- final_data.agg[ , data_idx]
+raw_data1  <- raw_data1[ , data_idx]
 
 # check if that they are in the same order
-all(rownames(metadata_modified) == colnames(data_ordered))
+all(rownames(colData_1) == colnames(raw_data1))
+
+#check the order
+all(colnames(raw_data1) == rownames(colData_1))
+
+# Convert numeric columns to integer
+numeric_columns <- sapply(raw_data1, is.numeric)
+
+# Convert numeric columns to integer format
+raw_data1[, numeric_columns] <- lapply(raw_data1[, numeric_columns], as.integer)
+
+# Convert 'braak_lewy_body_stage' column to factor
+colData_1$sample_condition <- factor(colData_1$sample_condition)
+class(colData_1$sample_condition)
+
+######################################################################
+######### Check the distribution of RNA-seq counts 
+#let’s plot a histogram of the counts for a single sample, ‘sample_R6’:
+ggplot(raw_data1) +
+  geom_histogram(aes(x = sample_R6), stat = "bin", bins = 200) +
+  xlab("Raw expression counts") +
+  ylab("Number of genes")
+
+#let’s plot a histogram of the counts for a single sample, ‘sample_R10’:
+ggplot(raw_data1) +
+  geom_histogram(aes(x = sample_R10), stat = "bin", bins = 200) +
+  xlab("Raw expression counts") +
+  ylab("Number of genes")
+
+# Mean vs Variance
+mean_counts <- apply(raw_data1[,6:8], 1, mean)        #The second argument '1' of 'apply' function indicates the function being applied to rows. Use '2' if applied to columns 
+variance_counts <- apply(raw_data1[,6:8], 1, var)
+df <- data.frame(mean_counts, variance_counts)
+
+# plot the mean and variance values against each others
+ggplot(df) +
+  geom_point(aes(x=mean_counts, y=variance_counts)) + 
+  scale_y_log10(limits = c(1,1e9)) +
+  scale_x_log10(limits = c(1,1e9)) +
+  geom_abline(intercept = 0, slope = 1, color="red")
+
+########### Begin the DESeq2 analysis 
+# Construct a DESeqDataSet object 
+dds1 <- DESeqDataSetFromMatrix(countData = raw_data1,
+                               colData = colData_1,
+                               design = ~ sample_condition)
+
+view(counts(dds1))
+
+
+# remove rows that have value less than 10 
+keep <- rowSums(counts(dds1)) >= 10
+dds1 <- dds1[keep, ]
+
+# set the factor level
+dds1$sample_condition <-  relevel(dds1$sample_condition, ref = "control")
+
+# Run DESeq
+dds1 <- DESeq(dds1)
+res1 <- results(dds1)
+
+res1
+
+#check results
+summary(res1)
+
+res1_0.05 <- results(dds1, alpha = 0.05)
+summary(res1_0.05)
 
 #######################################
-### we have many conditions so we will begin with sample condition 5 comparing with control 0
+### sample condition 5 comparing with control 0
 meta_5_data <- metadata_modified %>%
   filter(sample_condition == 0 | sample_condition == 5)
 
@@ -138,15 +245,7 @@ colData_5 <- meta_5_data %>%
   dplyr::mutate(sample_condition = gsub(5, "PD", sample_condition))
 
 # download the modified metadata to use it in the analysis
-write.csv(colData_5, "colData5.csv", row.names = TRUE)
-
-#extract only columns matching with metadata in the same order as row names of meta data 
-data_5_ordered <- data_ordered %>% 
-  dplyr::select(1, 2, 3, 4, 5, 6, 9, 10, 13, 14,
-                17, 18, 19, 22, 23, 26, 27, 29,
-                33, 34, 37, 38, 43, 44, 46, 54, 
-                55,60, 65, 66, 67, 68, 71, 73, 
-                74, 75, 76, 77, 80, 81, 82, 83) 
+#write.csv(colData_5, "colData5.csv", row.names = TRUE)
 
 ########## preparing for the DESeq2 analysis for stage 5
 # read in the metadata we have adjusted lately
@@ -157,6 +256,16 @@ rownames(colData_5) <- colData_5$X
 
 # remove the first column from the meatadata_modified
 colData_5 <- colData_5[, -1]
+
+# keep only the columns that matches with the rows of colData_5
+data_5 <- raw_data.agg[, names(raw_data.agg) %in% rownames(colData_5)]
+
+# know the right order indexing
+data_idx <- match(rownames(colData_5), colnames(data_5))
+data_idx
+
+# Reorder the counts data frame to have the sample names in the same order as the metadata data frame
+data_5_ordered  <- data_5[ , data_idx]
 
 #check the row names in colData match with column names with data_5_ordered
 all(colnames(data_5_ordered) %in% rownames(colData_5))
@@ -192,7 +301,7 @@ ggplot(df) +
   scale_x_log10(limits = c(1,1e9)) +
   geom_abline(intercept = 0, slope = 1, color="red")
 
-########### Begin with the DESeq2 analysis 
+########### Begin the DESeq2 analysis 
 # Construct a DESeqDataSet object 
 dds5 <- DESeqDataSetFromMatrix(countData = data_5_ordered,
                               colData = colData_5,
@@ -221,7 +330,7 @@ res5_0.05 <- results(dds5, alpha = 0.05)
 summary(res5_0.05)
 
 #####################################################
-### we have many conditions so we will begin with sample condition 6 comparing with control 0
+### sample condition 6 comparing with control 0
 meta_6_data <- metadata_modified %>%
   filter(sample_condition == 0 | sample_condition == 6)
 
@@ -231,15 +340,7 @@ colData_6 <- meta_6_data %>%
   dplyr::mutate(sample_condition = gsub(6, "PD", sample_condition))
 
 # download the modified metadata to use it in the analysis
-write.csv(colData_6, "colData6.csv", row.names = TRUE)
-
-#extract only columns matching with metadata in the same order as row names of meta data 
-data_6_ordered <- data_ordered %>% 
-  dplyr::select(5, 6, 7, 11, 16, 21, 22, 31, 34, 35,
-                37, 38, 39, 40, 42, 43, 45, 46, 47, 48,
-                49, 50, 52, 53, 54, 57, 58, 59, 60, 62,
-                63, 65, 66, 67, 70, 71, 72, 73, 74, 75, 
-                76, 77, 80, 81, 82, 83)
+#write.csv(colData_6, "colData6.csv", row.names = TRUE)
 
 ########## preparing for the DESeq2 analysis for stage 6 data
 # read in the metadata we have adjusted lately
@@ -250,6 +351,16 @@ rownames(colData_6) <- colData_6$X
 
 # remove the first column from the meatadata_modified
 colData_6 <- colData_6[, -1]
+
+# keep only the columns that matches with the rows of colData_5
+data_6 <- raw_data.agg[, names(raw_data.agg) %in% rownames(colData_6)]
+
+# know the right order indexing
+data_idx <- match(rownames(colData_6), colnames(data_6))
+data_idx
+
+# Reorder the counts data frame to have the sample names in the same order as the metadata data frame
+data_6  <- data_6[ , data_idx]
 
 #check the row names in colData match with column names with data_5_ordered
 all(colnames(data_6_ordered) %in% rownames(colData_6))
@@ -285,7 +396,7 @@ ggplot(df) +
   scale_x_log10(limits = c(1,1e9)) +
   geom_abline(intercept = 0, slope = 1, color="red")
 
-########### Begin with the DESeq2 analysis 
+########### Begin the DESeq2 analysis 
 # Construct a DESeqDataSet object 
 dds6 <- DESeqDataSetFromMatrix(countData = data_6_ordered,
                                colData = colData_6,
