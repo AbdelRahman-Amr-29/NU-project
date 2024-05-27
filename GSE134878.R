@@ -49,26 +49,25 @@ rownames(raw_counts) <- raw_counts$gene
 # remove the gene column
 raw_counts <- raw_counts[, -1]
 
-#####################################################
-# Remove rows containing zeros
-raw_counts <- raw_counts[apply(raw_counts, 1, function(row) !any(row == 0)), ]
+############### impute the missing values mean ##############
+# Calculate the proportion of zeros in each row
+prop_zeros <- rowSums(raw_counts == 0) / ncol(raw_counts)
 
-# Check if rows containing zeros are removed
-zeros_removed <- any(apply(raw_counts, 1, function(row) any(row == 0)))
+# Identify rows with less than 40% zeros
+rows_to_fill <- which(prop_zeros < 0.4)
+imputed_genes <- rows_to_fill
 
-# Print the result
-if (!zeros_removed) {
-  print("Rows containing zeros have been removed.")
-} else {
-  print("Rows containing zeros could not be removed completely.")
-}
+# Calculate the row means for these rows
+row_means <- rowMeans(raw_counts[rows_to_fill, ], na.rm = TRUE)
 
-#####################################################
-# Remove rows with NA values
-raw_counts <- na.omit(raw_counts)
+# Replace the zeros in these rows with the row means and remove other rows
+raw_counts[rows_to_fill, ] <- sweep(raw_counts[rows_to_fill, ], 2, row_means, FUN = function(x, y) ifelse(x == 0, y, x))
+raw_counts <- raw_counts[imputed_genes, ]
 
-#####################################################
-# get metadata
+# Round the imputed values
+raw_counts <- round(raw_counts)
+
+################## Get metadata ##########################
 gse <- getGEO(GEO = "GSE134878", GSEMatrix = TRUE)
 
 metadata <- pData(phenoData(gse[[1]]))
@@ -110,7 +109,7 @@ all(rownames(metadata_modified) == colnames(raw_counts))
 # download the modified metadata to use it in the analysis
 #write.csv(metadata_modified, "colData.csv", row.names = TRUE)
 
-########## preparing for the DESeq2 analysis
+#################### preparing for the DESeq2 analysis
 # remove rows form the raw_counts that don't have gene name
 raw_counts <- raw_counts[c(-1:-21), ]
 
@@ -142,13 +141,13 @@ colData$diagnosis <- factor(colData$diagnosis)
 # plot a histogram of the counts for a single sample, ‘A1’
 ggplot(raw_counts) +
   geom_histogram(aes(x = A1), stat = "bin", bins = 200) +
-  xlab("Raw expression counts") +
+  xlab("Raw raw_countsression counts") +
   ylab("Number of genes")
 
 # plot a histogram of the counts for a single sample, ‘B7’
 ggplot(raw_counts) +
   geom_histogram(aes(x = B7), stat = "bin", bins = 200) +
-  xlab("Raw expression counts") +
+  xlab("Raw raw_countsression counts") +
   ylab("Number of genes")
 
 # Mean vs Variance
@@ -186,7 +185,7 @@ dds <- DESeq(dds)
 res <- results(dds)
 res
 
-# Explore results
+# raw_countslore results
 summary(res)
 
 res0.05 <- results(dds, alpha = 0.05)
