@@ -43,19 +43,23 @@ rownames(raw_data) <- raw_data$symbol
 # remove the symbol column
 raw_data <- raw_data[, -1]
 
-################################################
-# Remove rows containing zeros
-raw_data <- raw_data[apply(raw_data, 1, function(row) !any(row == 0)), ]
+############### impute the missing values mean ##############
+# Calculate the proportion of zeros in each row
+prop_zeros <- rowSums(raw_data == 0) / ncol(raw_data)
 
-# Check if rows containing zeros are removed
-zeros_removed <- any(apply(raw_data, 1, function(row) any(row == 0)))
+# Identify rows with less than 40% zeros
+rows_to_fill <- which(prop_zeros < 0.4)
+imputed_genes <- rows_to_fill
 
-# Print the result
-if (!zeros_removed) {
-  print("Rows containing zeros have been removed.")
-} else {
-  print("Rows containing zeros could not be removed completely.")
-}
+# Calculate the row means for these rows
+row_means <- rowMeans(raw_data[rows_to_fill, ], na.rm = TRUE)
+
+# Replace the zeros in these rows with the row means and remove other rows
+raw_data[rows_to_fill, ] <- sweep(raw_data[rows_to_fill, ], 2, row_means, FUN = function(x, y) ifelse(x == 0, y, x))
+raw_data <- raw_data[imputed_genes, ]
+
+# Round the imputed values
+raw_data <- round(raw_data)
 
 ################################################
 ### get metadata
