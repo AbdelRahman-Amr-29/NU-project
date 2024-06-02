@@ -42,22 +42,25 @@ rownames(raw_counts) <- raw_counts$gene
 raw_counts <- raw_counts[, -1]
 
 #####################################################
-# Calculate the proportion of zeros in each row
-prop_zeros <- rowSums(raw_counts == 0) / ncol(raw_counts)
+# # Calculate the proportion of zeros in each row
+# prop_zeros <- rowSums(raw_counts == 0) / ncol(raw_counts)
+# 
+# # Identify rows with less than 40% zeros
+# rows_to_fill <- which(prop_zeros < 0.4)
+# imputed_genes <- rows_to_fill
+# 
+# # Calculate the row means for these rows
+# row_means <- rowMeans(raw_counts[rows_to_fill, ], na.rm = TRUE)
+# 
+# # Replace the zeros in these rows with the row means and remove other rows
+# raw_counts[rows_to_fill, ] <- sweep(raw_counts[rows_to_fill, ], 2, row_means, FUN = function(x, y) ifelse(x == 0, y, x))
+# raw_counts <- raw_counts[imputed_genes, ]
+# 
+# # Round the imputed values
+# raw_counts <- round(raw_counts)
 
-# Identify rows with less than 40% zeros
-rows_to_fill <- which(prop_zeros < 0.4)
-imputed_genes <- rows_to_fill
-
-# Calculate the row means for these rows
-row_means <- rowMeans(raw_counts[rows_to_fill, ], na.rm = TRUE)
-
-# Replace the zeros in these rows with the row means and remove other rows
-raw_counts[rows_to_fill, ] <- sweep(raw_counts[rows_to_fill, ], 2, row_means, FUN = function(x, y) ifelse(x == 0, y, x))
-raw_counts <- raw_counts[imputed_genes, ]
-
-# Round the imputed values
-raw_counts <- round(raw_counts)
+# Remoce low counts
+raw_counts <- raw_counts[rowSums(raw_counts) >=10, ]
 
 #####################################################
 # get metadata
