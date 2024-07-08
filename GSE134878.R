@@ -360,7 +360,7 @@ ego_MF <- enrichGO(gene = degs$gene,
                    OrgDb = org.Hs.eg.db,
                    ont = "MF",
                    pAdjustMethod = "BH",
-                   qvalueCutoff = 0.05,
+                   pvalueCutoff = 0.05,
                    readable = TRUE)
 
 #save results
@@ -373,7 +373,6 @@ ego_BP <- enrichGO(gene = degs$gene,
                    ont = "BP",
                    pAdjustMethod = "BH",
                    pvalueCutoff = 0.1,
-                   qvalueCutoff = 0.5,
                    readable = TRUE)
 
 #save results
