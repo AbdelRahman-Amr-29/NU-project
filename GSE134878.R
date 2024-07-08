@@ -346,8 +346,7 @@ ego_CC <- enrichGO(gene = degs$gene,
                    OrgDb = org.Hs.eg.db,
                    ont = "CC",
                    pAdjustMethod = "BH",
-                   pvalueCutoff = ,
-                   qvalueCutoff = 0.05,
+                   pvalueCutoff = 0.05,
                    readable = TRUE)
 
 # ## Output results from CC term
